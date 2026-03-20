@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>oncall // shift tracker</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root {
+    --bg-primary: #0a0a0c;
+    --bg-secondary: #111114;
+    --bg-tertiary: #18181c;
+    --bg-hover: #1e1e24;
+    --border: #2a2a32;
+    --border-active: #3a3a44;
+    --text-primary: #e8e8ec;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent: #22c55e;
+    --accent-dim: #166534;
+    --accent-glow: rgba(34, 197, 94, 0.15);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245, 158, 11, 0.12);
+    --red: #ef4444;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+    --sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  html { font-size: 15px; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- GRAIN OVERLAY --- */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    z-index: 9999;
+  }
+
+  /* --- LAYOUT --- */
+  .shell {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 2rem 4rem;
+  }
+
+  /* --- HEADER --- */
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+  }
+
+  .logo span {
+    color: var(--accent);
+  }
+
+  .pulse-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 2px;
+  }
+
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--accent); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 4px transparent; }
+  }
+
+  /* --- STATS GRID --- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+
+  .stat-card {
+    background: var(--bg-secondary);
+    padding: 1.5rem 1.75rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .stat-value .unit {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 0.25rem;
+  }
+
+  /* --- SECTIONS --- */
+  .section {
+    margin-bottom: 2.5rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+  }
+
+  .section-count {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  /* --- ACTIVE SHIFTS --- */
+  .active-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  .active-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .active-card:hover {
+    border-color: var(--accent-dim);
+  }
+
+  .active-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
+  }
+
+  .active-user {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .active-meta {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .active-meta .elapsed {
+    color: var(--accent);
+  }
+
+  .active-empty {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 2rem;
+    text-align: center;
+    border: 1px dashed var(--border);
+  }
+
+  /* --- SHIFT TABLE --- */
+  .shift-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+
+  .shift-table thead th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .shift-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .shift-table tbody tr:hover {
+    background: var(--bg-hover);
+  }
+
+  .shift-table tbody td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .shift-table tbody td:first-child {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .ticket-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+  }
+
+  .ticket-count-badge.has-tickets {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  /* --- EXPANDED ROW --- */
+  .ticket-detail {
+    display: none;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ticket-detail.open {
+    display: table-row;
+  }
+
+  .ticket-detail td {
+    padding: 1rem 1rem 1rem 2.5rem !important;
+  }
+
+  .ticket-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .ticket-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ticket-list li::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+
+  .ticket-list a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    transition: color 0.15s;
+    word-break: break-all;
+  }
+
+  .ticket-list a:hover {
+    color: var(--accent);
+  }
+
+  .ticket-list .logged-time {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .no-tickets {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .empty-table {
+    text-align: center;
+    padding: 3rem 1rem !important;
+    color: var(--text-muted) !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* --- BAR CHART --- */
+  .bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 80px;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .bar-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bar-track {
+    height: 24px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .bar-value {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  .bar-empty {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 2rem;
+    text-align: center;
+    border: 1px dashed var(--border);
+  }
+
+  /* --- LOADING --- */
+  .loading-skeleton {
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 2px;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* --- REFRESH INDICATOR --- */
+  .refresh-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    z-index: 100;
+    transition: width 0.3s;
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* --- RESPONSIVE --- */
+  @media (max-width: 768px) {
+    .shell { padding: 1rem; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .stat-value { font-size: 1.6rem; }
+    header { flex-direction: column; gap: 0.75rem; }
+    .bar-row { grid-template-columns: 80px 1fr 60px; }
+    .shift-table { font-size: 0.7rem; }
+  }
+
+  /* --- STAGGER ANIMATION --- */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: fadeUp 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="refresh-bar" id="refreshBar"></div>
+
+<div class="shell">
+  <header>
+    <div class="logo"><span>//</span> oncall</div>
+    <div class="pulse-badge">
+      <div class="pulse-dot"></div>
+      <span id="statusText">connecting</span>
+    </div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label">Total Shifts</div>
+      <div class="stat-value" id="statShifts">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Hours</div>
+      <div class="stat-value" id="statHours">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg per Shift</div>
+      <div class="stat-value" id="statAvg">--</div>
+    </div>
+  </div>
+
+  <!-- ACTIVE SHIFTS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Active Shifts</div>
+      <div class="section-count" id="activeCount">0</div>
+    </div>
+    <div class="active-grid" id="activeGrid">
+      <div class="active-empty">No active shifts</div>
+    </div>
+  </div>
+
+  <!-- SHIFT HISTORY -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Shift History</div>
+      <div class="section-count" id="historyCount">0</div>
+    </div>
+    <table class="shift-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Started</th>
+          <th>Ended</th>
+          <th>Duration</th>
+          <th>Tickets</th>
+        </tr>
+      </thead>
+      <tbody id="shiftBody">
+        <tr><td class="empty-table" colspan="5">Loading shifts...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- USER BREAKDOWN -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Hours by User</div>
+    </div>
+    <div class="bar-chart" id="barChart">
+      <div class="bar-empty">No data</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const REFRESH_MS = 30000;
+  let refreshTimer = null;
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  async function fetchJSON(url) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`${resp.status}`);
+    return resp.json();
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '--';
+    const d = new Date(iso);
+    const mon = d.toLocaleString('en', { month: 'short' });
+    const day = d.getDate();
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${mon} ${day}, ${h}:${m}`;
+  }
+
+  function formatDuration(startISO, endISO) {
+    if (!startISO) return '--';
+    const start = new Date(startISO);
+    const end = endISO ? new Date(endISO) : new Date();
+    const diffMs = end - start;
+    const hours = Math.floor(diffMs / 3600000);
+    const mins = Math.floor((diffMs % 3600000) / 60000);
+    return `${hours}h ${mins}m`;
+  }
+
+  function elapsed(startISO) {
+    const start = new Date(startISO);
+    const now = new Date();
+    const diffMs = now - start;
+    const hours = Math.floor(diffMs / 3600000);
+    const mins = Math.floor((diffMs % 3600000) / 60000);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  }
+
+  function renderStats(data) {
+    $('#statShifts').innerHTML = data.total_shifts;
+    $('#statHours').innerHTML = `${data.total_hours}<span class="unit">hrs</span>`;
+    $('#statAvg').innerHTML = `${data.avg_hours}<span class="unit">hrs</span>`;
+  }
+
+  function renderActive(shifts) {
+    const grid = $('#activeGrid');
+    $('#activeCount').textContent = shifts.length;
+
+    if (shifts.length === 0) {
+      grid.innerHTML = '<div class="active-empty">No active shifts</div>';
+      return;
+    }
+
+    grid.innerHTML = shifts.map((s, i) => `
+      <div class="active-card fade-up" style="animation-delay:${i * 0.05}s">
+        <div class="active-user">${s.slack_user_id}</div>
+        <div class="active-meta">
+          <span>started ${formatDate(s.start_time)}</span>
+          <span class="elapsed">${elapsed(s.start_time)} elapsed</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderShifts(shifts) {
+    const body = $('#shiftBody');
+    const completed = shifts.filter(s => s.end_time);
+    $('#historyCount').textContent = completed.length;
+
+    if (completed.length === 0) {
+      body.innerHTML = '<tr><td class="empty-table" colspan="5">No completed shifts</td></tr>';
+      return;
+    }
+
+    body.innerHTML = completed.map((s, i) => {
+      const tc = s.ticket_count || 0;
+      const badgeClass = tc > 0 ? 'ticket-count-badge has-tickets' : 'ticket-count-badge';
+      return `
+        <tr class="shift-row fade-up" style="animation-delay:${i * 0.03}s" data-id="${s.id}">
+          <td>${s.slack_user_id}</td>
+          <td>${formatDate(s.start_time)}</td>
+          <td>${formatDate(s.end_time)}</td>
+          <td>${formatDuration(s.start_time, s.end_time)}</td>
+          <td><span class="${badgeClass}">${tc}</span></td>
+        </tr>
+        <tr class="ticket-detail" data-detail="${s.id}">
+          <td colspan="5"><div class="loading-skeleton" style="height:20px;width:200px"></div></td>
+        </tr>
+      `;
+    }).join('');
+
+    body.querySelectorAll('.shift-row').forEach(row => {
+      row.addEventListener('click', () => toggleDetail(row.dataset.id));
+    });
+  }
+
+  async function toggleDetail(shiftId) {
+    const detailRow = document.querySelector(`[data-detail="${shiftId}"]`);
+    if (!detailRow) return;
+
+    if (detailRow.classList.contains('open')) {
+      detailRow.classList.remove('open');
+      return;
+    }
+
+    document.querySelectorAll('.ticket-detail.open').forEach(r => r.classList.remove('open'));
+    detailRow.classList.add('open');
+
+    try {
+      const shift = await fetchJSON(`/api/shifts/${shiftId}`);
+      const tickets = shift.tickets || [];
+
+      if (tickets.length === 0) {
+        detailRow.querySelector('td').innerHTML = '<span class="no-tickets">No tickets logged for this shift</span>';
+      } else {
+        detailRow.querySelector('td').innerHTML = `
+          <ul class="ticket-list">
+            ${tickets.map(t => `
+              <li>
+                <a href="${t.issue_url}" target="_blank" rel="noopener">${t.issue_url}</a>
+                <span class="logged-time">${formatDate(t.logged_at)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        `;
+      }
+    } catch {
+      detailRow.querySelector('td').innerHTML = '<span class="no-tickets">Failed to load tickets</span>';
+    }
+  }
+
+  function renderBars(data) {
+    const chart = $('#barChart');
+    const users = data.users || [];
+
+    if (users.length === 0) {
+      chart.innerHTML = '<div class="bar-empty">No data</div>';
+      return;
+    }
+
+    const maxHours = Math.max(...users.map(u => u.avg_hours), 1);
+
+    chart.innerHTML = users.map((u, i) => {
+      const pct = Math.max((u.avg_hours / maxHours) * 100, 2);
+      return `
+        <div class="bar-row fade-up" style="animation-delay:${i * 0.06}s">
+          <div class="bar-label" title="${u.slack_user_id}">${u.slack_user_id}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="bar-value">${u.avg_hours}h avg (${u.shifts})</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadAll() {
+    const bar = $('#refreshBar');
+    bar.style.width = '30%';
+
+    try {
+      const [stats, active, shifts] = await Promise.all([
+        fetchJSON('/api/stats'),
+        fetchJSON('/api/shifts/active'),
+        fetchJSON('/api/shifts?limit=50'),
+      ]);
+
+      bar.style.width = '80%';
+
+      renderStats(stats);
+      renderActive(active);
+      renderShifts(shifts);
+      renderBars(stats);
+
+      $('#statusText').textContent = `live - ${new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}`;
+
+      bar.style.width = '100%';
+      setTimeout(() => { bar.style.width = '0%'; }, 300);
+
+    } catch (err) {
+      console.error('fetch failed:', err);
+      $('#statusText').textContent = 'error';
+      bar.style.width = '0%';
+    }
+  }
+
+  loadAll();
+  refreshTimer = setInterval(loadAll, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
