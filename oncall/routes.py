@@ -80,7 +80,9 @@ async def get_shift(
     shift_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ):
     result = await session.execute(
-        select(Shift).options(selectinload(Shift.tickets)).where(Shift.id == shift_id)
+        select(Shift)
+        .options(selectinload(Shift.tickets), selectinload(Shift.notes))
+        .where(Shift.id == shift_id)
     )
     shift = result.scalar_one_or_none()
     if not shift:

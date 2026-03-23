@@ -32,6 +32,9 @@ class Shift(Base):
     tickets: Mapped[list["Ticket"]] = relationship(
         back_populates="shift", cascade="all, delete-orphan"
     )
+    notes: Mapped[list["Note"]] = relationship(
+        back_populates="shift", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index(
@@ -58,3 +61,20 @@ class Ticket(Base):
     )
 
     shift: Mapped[Shift] = relationship(back_populates="tickets")
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=func.gen_random_uuid()
+    )
+    shift_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("shifts.id", ondelete="CASCADE"), nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    shift: Mapped[Shift] = relationship(back_populates="notes")

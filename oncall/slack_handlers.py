@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from oncall.db import async_session
-from oncall.models import Shift, Ticket
+from oncall.models import Note, Shift, Ticket
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,39 @@ def register_commands(app: AsyncApp) -> None:
 
         return {"response_type": "ephemeral", "text": f"Ticket logged: {url}"}
 
+    @app.command("/oncall-note")
+    async def handle_oncall_note(ack, command):
+        await ack()
+        user_id = command["user_id"]
+        text = (command.get("text") or "").strip()
+
+        if not text:
+            return {
+                "response_type": "ephemeral",
+                "text": "Usage: `/oncall-note <what you did>`",
+            }
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Shift).where(
+                    Shift.slack_user_id == user_id,
+                    Shift.end_time.is_(None),
+                )
+            )
+            shift = result.scalar_one_or_none()
+
+            if not shift:
+                return {
+                    "response_type": "ephemeral",
+                    "text": "No active shift. Start one with `/oncall` first.",
+                }
+
+            note = Note(shift_id=shift.id, content=text)
+            session.add(note)
+            await session.commit()
+
+        return {"response_type": "ephemeral", "text": f"Note added: {text}"}
+
     @app.command("/offcall")
     async def handle_offcall(ack, command, client):
         await ack()
@@ -102,7 +135,7 @@ def register_commands(app: AsyncApp) -> None:
         async with async_session() as session:
             result = await session.execute(
                 select(Shift)
-                .options(selectinload(Shift.tickets))
+                .options(selectinload(Shift.tickets), selectinload(Shift.notes))
                 .where(
                     Shift.slack_user_id == user_id,
                     Shift.end_time.is_(None),
@@ -125,11 +158,14 @@ def register_commands(app: AsyncApp) -> None:
             minutes = remainder // 60
             ticket_lines = "\n".join(f"  - {t.issue_url}" for t in shift.tickets)
             ticket_section = f"\n{ticket_lines}" if ticket_lines else "\n  (none)"
+            note_lines = "\n".join(f"  - {n.content}" for n in shift.notes)
+            note_section = f"\n{note_lines}" if note_lines else "\n  (none)"
 
             summary = (
                 f"*Oncall shift ended for <@{user_id}>*\n"
                 f"Duration: {hours}h {minutes}m\n"
-                f"Tickets triaged ({len(shift.tickets)}):{ticket_section}"
+                f"Tickets triaged ({len(shift.tickets)}):{ticket_section}\n"
+                f"Notes ({len(shift.notes)}):{note_section}"
             )
 
             await client.chat_postMessage(channel=channel_id, text=summary)

@@ -13,6 +13,15 @@ class TicketOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class NoteOut(BaseModel):
+    id: uuid.UUID
+    shift_id: uuid.UUID
+    content: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ShiftOut(BaseModel):
     id: uuid.UUID
     slack_user_id: str
@@ -22,6 +31,7 @@ class ShiftOut(BaseModel):
     channel_id: str
     created_at: datetime
     tickets: list[TicketOut] = []
+    notes: list[NoteOut] = []
 
     model_config = {"from_attributes": True}
 

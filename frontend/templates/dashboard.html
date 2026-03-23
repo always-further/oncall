@@ -734,12 +734,26 @@
     try {
       const shift = await fetchJSON(`/api/shifts/${shiftId}`);
       const tickets = shift.tickets || [];
+      const notes = shift.notes || [];
 
-      if (tickets.length === 0) {
-        detailRow.querySelector('td').innerHTML = '<span class="no-tickets">No tickets logged for this shift</span>';
-      } else {
-        detailRow.querySelector('td').innerHTML = `
-          <ul class="ticket-list">
+      let html = '';
+
+      if (notes.length > 0) {
+        html += `<div style="margin-bottom:0.8rem"><span style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted)">Notes</span>
+          <ul class="ticket-list" style="margin-top:0.4rem">
+            ${notes.map(n => `
+              <li>
+                <span style="color:var(--text-secondary);font-family:var(--mono);font-size:0.75rem">${n.content}</span>
+                <span class="logged-time">${formatDate(n.created_at)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>`;
+      }
+
+      if (tickets.length > 0) {
+        html += `<div><span style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted)">Tickets</span>
+          <ul class="ticket-list" style="margin-top:0.4rem">
             ${tickets.map(t => `
               <li>
                 <a href="${t.issue_url}" target="_blank" rel="noopener">${t.issue_url}</a>
@@ -747,8 +761,14 @@
               </li>
             `).join('')}
           </ul>
-        `;
+        </div>`;
       }
+
+      if (!html) {
+        html = '<span class="no-tickets">No notes or tickets for this shift</span>';
+      }
+
+      detailRow.querySelector('td').innerHTML = html;
     } catch {
       detailRow.querySelector('td').innerHTML = '<span class="no-tickets">Failed to load tickets</span>';
     }
