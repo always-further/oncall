@@ -56,6 +56,33 @@ def _callback_url(request: Request) -> str:
 
 
 async def login(request: Request):
+    from fastapi.responses import HTMLResponse
+
+    if "start" not in request.query_params:
+        html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>oncall // login</title>
+<style>
+body{background:#0a0a0c;color:#e8e8ec;font-family:'SF Pro Display',-apple-system,system-ui,sans-serif;
+display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
+.box{text-align:center}
+h1{font-family:'SF Mono',monospace;font-size:1.4rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:0.5rem}
+h1 span{color:#22c55e}
+p{color:#8888a0;font-size:0.85rem;margin-bottom:2rem}
+a.btn{display:inline-flex;align-items:center;gap:0.6rem;background:#e8e8ec;color:#0a0a0c;
+text-decoration:none;padding:0.65rem 1.5rem;border-radius:4px;font-size:0.85rem;font-weight:600;
+transition:background 0.15s}
+a.btn:hover{background:#fff}
+a.btn svg{width:20px;height:20px}
+</style></head><body><div class="box">
+<h1><span>//</span> oncall</h1>
+<p>Oncall shift tracker</p>
+<a class="btn" href="/auth/login?start=1">
+<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+Log in with GitHub
+</a>
+</div></body></html>"""
+        return HTMLResponse(content=html)
+
     state = secrets.token_urlsafe(32)
     params = urlencode({
         "client_id": settings.github_client_id,
@@ -136,7 +163,8 @@ async def callback(request: Request):
 
 async def logout(request: Request):  # noqa: ARG001
     response = RedirectResponse(url="/auth/logged-out")
-    response.delete_cookie(SESSION_COOKIE, path="/", secure=True, samesite="lax")
+    response.set_cookie(SESSION_COOKIE, "", max_age=0, path="/", httponly=True)
+    response.set_cookie(SESSION_COOKIE, "", max_age=0, path="/", httponly=True, secure=True)
     return response
 
 
