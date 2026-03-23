@@ -53,4 +53,7 @@ async def slack_events(req: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    user = getattr(request.state, "user", None)
+    return templates.TemplateResponse(
+        "dashboard.html", {"request": request, "user": user}
+    )
