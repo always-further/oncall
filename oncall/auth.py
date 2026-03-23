@@ -13,7 +13,7 @@ from oncall.config import settings
 
 logger = logging.getLogger(__name__)
 
-_PUBLIC_PATHS = {"/slack/events", "/api/health", "/auth/login", "/auth/callback"}
+_PUBLIC_PATHS = {"/slack/events", "/api/health", "/auth/login", "/auth/callback", "/auth/logout"}
 
 _signer = URLSafeTimedSerializer(settings.session_secret)
 
@@ -126,6 +126,7 @@ async def callback(request: Request):
         token,
         httponly=True,
         max_age=SESSION_MAX_AGE,
+        path="/",
         samesite="lax",
     )
     response.delete_cookie("oauth_state")
@@ -134,5 +135,5 @@ async def callback(request: Request):
 
 async def logout(request: Request):  # noqa: ARG001
     response = RedirectResponse(url="/auth/login")
-    response.delete_cookie(SESSION_COOKIE)
+    response.delete_cookie(SESSION_COOKIE, path="/", samesite="lax")
     return response
