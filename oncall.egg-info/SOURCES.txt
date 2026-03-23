@@ -1,5 +1,7 @@
+README.md
 pyproject.toml
 oncall/__init__.py
+oncall/auth.py
 oncall/config.py
 oncall/db.py
 oncall/main.py

@@ -8,7 +8,7 @@ from oncall.config import settings
 def _connect_args() -> dict:
     if not settings.database_ssl:
         return {}
-    ctx = ssl.create_default_context()
+    ctx = ssl.create_default_context(cafile=settings.database_ssl_ca or None)
     ctx.check_hostname = True
     ctx.verify_mode = ssl.CERT_REQUIRED
     return {"ssl": ctx}
