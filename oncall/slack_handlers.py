@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from slack_bolt.async_app import AsyncApp
@@ -6,6 +7,8 @@ from sqlalchemy.orm import selectinload
 
 from oncall.db import async_session
 from oncall.models import Shift, Ticket
+
+logger = logging.getLogger(__name__)
 
 
 def register_commands(app: AsyncApp) -> None:
@@ -18,14 +21,18 @@ def register_commands(app: AsyncApp) -> None:
         display_name = user_id
         try:
             info = await client.users_info(user=user_id)
-            profile = info["user"]["profile"]
+            user_obj = info.get("user", {})
+            profile = user_obj.get("profile", {})
             display_name = (
-                profile.get("display_name")
-                or profile.get("real_name")
+                profile.get("display_name_normalized")
+                or profile.get("real_name_normalized")
+                or user_obj.get("real_name")
+                or user_obj.get("name")
                 or user_id
             )
+            logger.info("Resolved %s to '%s'", user_id, display_name)
         except Exception:
-            pass
+            logger.exception("Failed to resolve display name for %s", user_id)
 
         async with async_session() as session:
             result = await session.execute(

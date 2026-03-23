@@ -125,6 +125,7 @@ async def callback(request: Request):
         SESSION_COOKIE,
         token,
         httponly=True,
+        secure=True,
         max_age=SESSION_MAX_AGE,
         path="/",
         samesite="lax",
@@ -135,7 +136,7 @@ async def callback(request: Request):
 
 async def logout(request: Request):  # noqa: ARG001
     response = RedirectResponse(url="/auth/logged-out")
-    response.delete_cookie(SESSION_COOKIE, path="/", samesite="lax")
+    response.delete_cookie(SESSION_COOKIE, path="/", secure=True, samesite="lax")
     return response
 
 
