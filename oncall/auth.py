@@ -62,16 +62,16 @@ async def login(request: Request):
         html = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>oncall // login</title>
 <style>
-body{background:#0a0a0c;color:#e8e8ec;font-family:'SF Pro Display',-apple-system,system-ui,sans-serif;
+body{background:#ffffff;color:#212529;font-family:'SF Pro Display',-apple-system,system-ui,sans-serif;
 display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
 .box{text-align:center}
 h1{font-family:'SF Mono',monospace;font-size:1.4rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:0.5rem}
-h1 span{color:#22c55e}
-p{color:#8888a0;font-size:0.85rem;margin-bottom:2rem}
-a.btn{display:inline-flex;align-items:center;gap:0.6rem;background:#e8e8ec;color:#0a0a0c;
-text-decoration:none;padding:0.65rem 1.5rem;border-radius:4px;font-size:0.85rem;font-weight:600;
+h1 span{color:#16a34a}
+p{color:#868e96;font-size:0.85rem;margin-bottom:2rem}
+a.btn{display:inline-flex;align-items:center;gap:0.6rem;background:#212529;color:#fff;
+text-decoration:none;padding:0.65rem 1.5rem;border-radius:6px;font-size:0.85rem;font-weight:600;
 transition:background 0.15s}
-a.btn:hover{background:#fff}
+a.btn:hover{background:#000}
 a.btn svg{width:20px;height:20px}
 </style></head><body><div class="box">
 <h1><span>//</span> oncall</h1>
@@ -172,10 +172,10 @@ async def logged_out(request: Request):  # noqa: ARG001
     html = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Logged out</title>
 <style>
-body{background:#0a0a0c;color:#e8e8ec;font-family:system-ui;display:flex;
+body{background:#ffffff;color:#212529;font-family:system-ui;display:flex;
 justify-content:center;align-items:center;min-height:100vh;margin:0}
 .box{text-align:center}
-a{color:#22c55e;text-decoration:none;font-size:0.9rem}
+a{color:#16a34a;text-decoration:none;font-size:0.9rem}
 a:hover{text-decoration:underline}
 h2{font-size:1.1rem;font-weight:500;margin-bottom:1rem}
 </style></head><body><div class="box">
