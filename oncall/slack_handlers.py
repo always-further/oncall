@@ -10,10 +10,22 @@ from oncall.models import Shift, Ticket
 
 def register_commands(app: AsyncApp) -> None:
     @app.command("/oncall")
-    async def handle_oncall(ack, command):
+    async def handle_oncall(ack, command, client):
         await ack()
         user_id = command["user_id"]
         channel_id = command["channel_id"]
+
+        display_name = user_id
+        try:
+            info = await client.users_info(user=user_id)
+            profile = info["user"]["profile"]
+            display_name = (
+                profile.get("display_name")
+                or profile.get("real_name")
+                or user_id
+            )
+        except Exception:
+            pass
 
         async with async_session() as session:
             result = await session.execute(
@@ -29,6 +41,7 @@ def register_commands(app: AsyncApp) -> None:
 
             shift = Shift(
                 slack_user_id=user_id,
+                display_name=display_name,
                 channel_id=channel_id,
                 start_time=datetime.now(timezone.utc),
             )

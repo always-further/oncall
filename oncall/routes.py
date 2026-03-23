@@ -39,6 +39,7 @@ async def list_shifts(
             ShiftSummary(
                 id=s.id,
                 slack_user_id=s.slack_user_id,
+                display_name=s.display_name,
                 start_time=s.start_time,
                 end_time=s.end_time,
                 channel_id=s.channel_id,
@@ -64,6 +65,7 @@ async def active_shifts(session: AsyncSession = Depends(get_session)):
             ShiftSummary(
                 id=s.id,
                 slack_user_id=s.slack_user_id,
+                display_name=s.display_name,
                 start_time=s.start_time,
                 end_time=s.end_time,
                 channel_id=s.channel_id,
@@ -105,18 +107,25 @@ async def shift_stats(
             "users": [],
         }
 
-    user_map: dict[str, list[float]] = {}
+    user_map: dict[str, dict] = {}
     for s in shifts:
         duration_hours = (s.end_time - s.start_time).total_seconds() / 3600
-        user_map.setdefault(s.slack_user_id, []).append(duration_hours)
+        if s.slack_user_id not in user_map:
+            user_map[s.slack_user_id] = {
+                "display_name": s.display_name,
+                "hours": [],
+            }
+        user_map[s.slack_user_id]["hours"].append(duration_hours)
 
-    total_hours = sum(h for hrs in user_map.values() for h in hrs)
-    total_shifts = sum(len(hrs) for hrs in user_map.values())
+    total_hours = sum(h for entry in user_map.values() for h in entry["hours"])
+    total_shifts = sum(len(entry["hours"]) for entry in user_map.values())
 
     users = []
-    for uid, hrs in sorted(user_map.items()):
+    for uid, entry in sorted(user_map.items()):
+        hrs = entry["hours"]
         users.append({
             "slack_user_id": uid,
+            "display_name": entry["display_name"],
             "shifts": len(hrs),
             "total_hours": round(sum(hrs), 2),
             "avg_hours": round(sum(hrs) / len(hrs), 2),

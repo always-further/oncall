@@ -678,7 +678,7 @@
 
     grid.innerHTML = shifts.map((s, i) => `
       <div class="active-card fade-up" style="animation-delay:${i * 0.05}s">
-        <div class="active-user">${s.slack_user_id}</div>
+        <div class="active-user">${s.display_name || s.slack_user_id}</div>
         <div class="active-meta">
           <span>started ${formatDate(s.start_time)}</span>
           <span class="elapsed">${elapsed(s.start_time)} elapsed</span>
@@ -702,7 +702,7 @@
       const badgeClass = tc > 0 ? 'ticket-count-badge has-tickets' : 'ticket-count-badge';
       return `
         <tr class="shift-row fade-up" style="animation-delay:${i * 0.03}s" data-id="${s.id}">
-          <td>${s.slack_user_id}</td>
+          <td>${s.display_name || s.slack_user_id}</td>
           <td>${formatDate(s.start_time)}</td>
           <td>${formatDate(s.end_time)}</td>
           <td>${formatDuration(s.start_time, s.end_time)}</td>
@@ -769,7 +769,7 @@
       const pct = Math.max((u.avg_hours / maxHours) * 100, 2);
       return `
         <div class="bar-row fade-up" style="animation-delay:${i * 0.06}s">
-          <div class="bar-label" title="${u.slack_user_id}">${u.slack_user_id}</div>
+          <div class="bar-label" title="${u.display_name || u.slack_user_id}">${u.display_name || u.slack_user_id}</div>
           <div class="bar-track">
             <div class="bar-fill" style="width:${pct}%"></div>
           </div>

@@ -17,6 +17,7 @@ class Shift(Base):
         Uuid, primary_key=True, server_default=func.gen_random_uuid()
     )
     slack_user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

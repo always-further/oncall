@@ -16,6 +16,7 @@ class TicketOut(BaseModel):
 class ShiftOut(BaseModel):
     id: uuid.UUID
     slack_user_id: str
+    display_name: str | None = None
     start_time: datetime
     end_time: datetime | None
     channel_id: str
@@ -28,6 +29,7 @@ class ShiftOut(BaseModel):
 class ShiftSummary(BaseModel):
     id: uuid.UUID
     slack_user_id: str
+    display_name: str | None = None
     start_time: datetime
     end_time: datetime | None
     channel_id: str
