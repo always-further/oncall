@@ -734,16 +734,18 @@
     try {
       const shift = await fetchJSON(`/api/shifts/${shiftId}`);
       const tickets = shift.tickets || [];
-      const notes = shift.notes || [];
+      const allNotes = shift.notes || [];
+      const generalNotes = allNotes.filter(n => !n.ticket_id);
 
       let html = '';
 
-      if (notes.length > 0) {
-        html += `<div style="margin-bottom:0.8rem"><span style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted)">Notes</span>
+      // General notes (not attached to a ticket)
+      if (generalNotes.length > 0) {
+        html += `<div style="margin-bottom:1rem"><span style="font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted)">General notes</span>
           <ul class="ticket-list" style="margin-top:0.4rem">
-            ${notes.map(n => `
+            ${generalNotes.map(n => `
               <li>
-                <span style="color:var(--text-secondary);font-family:var(--mono);font-size:0.75rem">${n.content}</span>
+                <span style="color:var(--text-secondary);font-family:var(--mono);font-size:0.85rem">${n.content}</span>
                 <span class="logged-time">${formatDate(n.created_at)}</span>
               </li>
             `).join('')}
@@ -751,17 +753,31 @@
         </div>`;
       }
 
+      // Tickets with their threaded notes
       if (tickets.length > 0) {
-        html += `<div><span style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted)">Tickets</span>
-          <ul class="ticket-list" style="margin-top:0.4rem">
-            ${tickets.map(t => `
-              <li>
-                <a href="${t.issue_url}" target="_blank" rel="noopener">${t.issue_url}</a>
-                <span class="logged-time">${formatDate(t.logged_at)}</span>
-              </li>
-            `).join('')}
-          </ul>
-        </div>`;
+        html += tickets.map(t => {
+          const issueNum = t.issue_url.match(/\/issues\/(\d+)/);
+          const label = issueNum ? '#' + issueNum[1] : t.issue_url;
+          const tNotes = t.notes || [];
+          return `
+            <div style="margin-bottom:1rem;padding:0.75rem;background:var(--bg-secondary);border:1px solid var(--border);border-left:3px solid var(--accent)">
+              <div style="margin-bottom:0.5rem">
+                <a href="${t.issue_url}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:0.9rem;font-weight:600">${label}</a>
+                <span style="color:var(--text-muted);font-family:var(--mono);font-size:0.75rem;margin-left:0.75rem">${t.issue_url}</span>
+              </div>
+              ${tNotes.length > 0 ? `
+                <ul class="ticket-list">
+                  ${tNotes.map(n => `
+                    <li>
+                      <span style="color:var(--text-secondary);font-family:var(--mono);font-size:0.85rem">${n.content}</span>
+                      <span class="logged-time">${formatDate(n.created_at)}</span>
+                    </li>
+                  `).join('')}
+                </ul>
+              ` : '<span class="no-tickets">No notes</span>'}
+            </div>
+          `;
+        }).join('');
       }
 
       if (!html) {

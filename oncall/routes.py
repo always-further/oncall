@@ -79,9 +79,13 @@ async def active_shifts(session: AsyncSession = Depends(get_session)):
 async def get_shift(
     shift_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ):
+    from oncall.models import Ticket as TicketModel
     result = await session.execute(
         select(Shift)
-        .options(selectinload(Shift.tickets), selectinload(Shift.notes))
+        .options(
+            selectinload(Shift.tickets).selectinload(TicketModel.notes),
+            selectinload(Shift.notes),
+        )
         .where(Shift.id == shift_id)
     )
     shift = result.scalar_one_or_none()
