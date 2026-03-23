@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from oncall.auth import AuthMiddleware, callback, login, logout
+from oncall.auth import AuthMiddleware, callback, logged_out, login, logout
 from oncall.config import settings
 from oncall.routes import router
 
@@ -25,6 +25,7 @@ app.mount(
 app.add_api_route("/auth/login", login, methods=["GET"])
 app.add_api_route("/auth/callback", callback, methods=["GET"], name="auth_callback")
 app.add_api_route("/auth/logout", logout, methods=["GET"])
+app.add_api_route("/auth/logged-out", logged_out, methods=["GET"])
 
 
 _slack_handler = None

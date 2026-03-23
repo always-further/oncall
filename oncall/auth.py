@@ -13,7 +13,7 @@ from oncall.config import settings
 
 logger = logging.getLogger(__name__)
 
-_PUBLIC_PATHS = {"/slack/events", "/api/health", "/auth/login", "/auth/callback", "/auth/logout"}
+_PUBLIC_PATHS = {"/slack/events", "/api/health", "/auth/login", "/auth/callback", "/auth/logout", "/auth/logged-out"}
 
 _signer = URLSafeTimedSerializer(settings.session_secret)
 
@@ -134,6 +134,24 @@ async def callback(request: Request):
 
 
 async def logout(request: Request):  # noqa: ARG001
-    response = RedirectResponse(url="/auth/login")
+    response = RedirectResponse(url="/auth/logged-out")
     response.delete_cookie(SESSION_COOKIE, path="/", samesite="lax")
     return response
+
+
+async def logged_out(request: Request):  # noqa: ARG001
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Logged out</title>
+<style>
+body{background:#0a0a0c;color:#e8e8ec;font-family:system-ui;display:flex;
+justify-content:center;align-items:center;min-height:100vh;margin:0}
+.box{text-align:center}
+a{color:#22c55e;text-decoration:none;font-size:0.9rem}
+a:hover{text-decoration:underline}
+h2{font-size:1.1rem;font-weight:500;margin-bottom:1rem}
+</style></head><body><div class="box">
+<h2>You have been logged out.</h2>
+<a href="/auth/login">Log in again</a>
+</div></body></html>"""
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
