@@ -1,3 +1,4 @@
+import logging
 import hmac
 import secrets
 from urllib.parse import urlencode
@@ -9,6 +10,8 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from oncall.config import settings
+
+logger = logging.getLogger(__name__)
 
 _PUBLIC_PATHS = {"/slack/events", "/api/health", "/auth/login", "/auth/callback"}
 
@@ -46,11 +49,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         return RedirectResponse(url="/auth/login")
 
 
+def _callback_url(request: Request) -> str:
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host", request.url.hostname)
+    return f"{scheme}://{host}/auth/callback"
+
+
 async def login(request: Request):
     state = secrets.token_urlsafe(32)
     params = urlencode({
         "client_id": settings.github_client_id,
-        "redirect_uri": str(request.url_for("auth_callback")),
+        "redirect_uri": _callback_url(request),
         "scope": "read:org" if settings.github_allowed_org else "read:user",
         "state": state,
     })
@@ -83,13 +92,15 @@ async def callback(request: Request):
         token_data = token_resp.json()
         access_token = token_data.get("access_token")
         if not access_token:
-            return JSONResponse({"detail": "OAuth token exchange failed"}, status_code=400)
+            logger.error("OAuth token exchange failed: %s", token_data)
+            return JSONResponse({"detail": "OAuth token exchange failed", "error": token_data}, status_code=400)
 
         headers = {"Authorization": f"Bearer {access_token}"}
 
         user_resp = await client.get("https://api.github.com/user", headers=headers)
         if user_resp.status_code != 200:
-            return JSONResponse({"detail": "Failed to fetch GitHub user"}, status_code=400)
+            logger.error("GitHub user fetch failed: %s %s", user_resp.status_code, user_resp.text)
+            return JSONResponse({"detail": "Failed to fetch GitHub user", "status": user_resp.status_code, "body": user_resp.text}, status_code=400)
         user_data = user_resp.json()
 
         if settings.github_allowed_org:
