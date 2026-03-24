@@ -50,8 +50,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 
 def _callback_url(request: Request) -> str:
-    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
-    host = request.headers.get("x-forwarded-host", request.url.hostname)
+    if settings.base_url:
+        return f"{settings.base_url.rstrip('/')}/auth/callback"
+    scheme = request.url.scheme
+    host = request.url.hostname
     return f"{scheme}://{host}/auth/callback"
 
 
